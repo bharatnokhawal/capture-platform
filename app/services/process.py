@@ -1,6 +1,7 @@
 from app.core.db import get_db_connection
 from app.services.ocr import extract_text
-#from app.services.ocr_llm import extract_text_llm
+from app.services.ocr_llm import extract_text_llm
+from app.services.azure_ocr import extract_text_azure
 from app.services.gpt_extraction import extract_with_gemini
 from psycopg2.extras import Json
 from fastapi import HTTPException
@@ -18,11 +19,11 @@ def fetch_configuration():
 
 async def process_file(file_path, dataset_name):
     config = fetch_configuration()
-    prompt_template = config.get(dataset_name, {}).get("model_prompt", "Extract all data.")
-    example_schema = config.get(dataset_name, {}).get("example_schema", {})
+    #prompt_template = config.get(dataset_name, {}).get("model_prompt", "Extract all data.")
+    #example_schema = config.get(dataset_name, {}).get("example_schema", {})
 
-    ocr_output, num_pages = extract_text(file_path)
-    #gemini_output = extract_text_llm(file_path)
+    #ocr_output, num_pages = extract_text(file_path)
+    ocr_output,num_pages = extract_text_azure(file_path)
 
 
     schema = """
@@ -174,7 +175,7 @@ async def process_file(file_path, dataset_name):
     prompt = f"""
 
     first need to extract the text form this pdf and do this job
-    {schema}
+    
 
     You are an OCR document parser.
 
@@ -189,7 +190,7 @@ Output the result as valid JSON strictly following the schema below.
 - Always return valid JSON only.
 
     Schema:
-    {example_schema} 
+    {schema} 
 
     OCR Output:
     {ocr_output}
@@ -197,7 +198,7 @@ Output the result as valid JSON strictly following the schema below.
     """
 
     gpt_output_raw = await extract_with_gemini(prompt,file_path=file_path)
-
+    
     try:
         cleaned = gpt_output_raw.strip().strip("```json").strip("```")
         gpt_output = json.loads(cleaned)
