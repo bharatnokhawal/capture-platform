@@ -24,7 +24,7 @@ async def process_file(file_path, dataset_name):
 
     #ocr_output, num_pages = extract_text(file_path)
     ocr_output,num_pages = extract_text_azure(file_path)
-
+    
 
     schema = """
 {
@@ -173,29 +173,26 @@ async def process_file(file_path, dataset_name):
 }
 """
     prompt = f"""
+You are an OCR document parser.
 
-    first need to extract the text form this pdf and do this job
-    
-
-    You are an OCR document parser.
-
-Extract all possible information from the provided document text (invoice/packing list).
-Output the result as valid JSON strictly following the schema below. 
+Step 1: Extract all possible text directly from the provided PDF file.  
+Step 2: Compare and cross-check this extracted text with the additional OCR output provided below.  
+Step 3: Using both sources, extract all possible structured information relevant to invoices or packing lists.  
+Step 4: Output the result as valid JSON strictly following the schema below.  
 
 ⚠️ Rules:
 - Do not add, remove, or rename any keys.
 - Preserve the same structure and field order.
 - Replace "string"/"number" placeholders with extracted values.
-- If a field is missing, write null.
-- Always return valid JSON only.
+- If a field is missing or cannot be determined, write null.
+- Always return valid JSON only (no explanations, no extra text).
 
-    Schema:
-    {schema} 
+Schema:
+{schema} 
 
-    OCR Output:
-    {ocr_output}
-
-    """
+Additional OCR Output (for cross-checking):
+{ocr_output}
+"""
 
     gpt_output_raw = await extract_with_gemini(prompt,file_path=file_path)
     
